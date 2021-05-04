@@ -3,14 +3,32 @@ defmodule RandomColor do
   Documentation for `RandomColor`.
   """
 
-  defmodule Color do
-    defstruct(:name, :hue_range, :saturation_range, brightness_range)
+  alias RandomColor.Color
 
-    def monochrome() do
-      define("monochrome", nil, [0..0, 100..0])
+  defmodule Color do
+    defstruct [:name, :lower_bounds, :hue_range, :saturation_range, :brightness_range]
+
+    def color_dictionary() do
+      [
+        monochrome: monochrome(),
+        red: red(),
+        orange: orange(),
+        yellow: yellow(),
+        green: green(),
+        blue: blue(),
+        purple: purple(),
+        pink: pink()
+      ]
     end
 
-    def red() do
+    def monochrome do
+      define("monochrome", nil, [
+        0..0,
+        100..0
+      ])
+    end
+
+    def red do
       define("red", [-26..18], [
         20..100,
         30..92,
@@ -24,7 +42,7 @@ defmodule RandomColor do
       ])
     end
 
-    def orange() do
+    def orange do
       define("orange", [18..46], [
         20..100,
         30..93,
@@ -36,7 +54,7 @@ defmodule RandomColor do
       ])
     end
 
-    def yellow() do
+    def yellow do
       define("yellow", [46..62], [
         25..100,
         40..94,
@@ -49,7 +67,7 @@ defmodule RandomColor do
       ])
     end
 
-    def green() do
+    def green do
       define("green", [62, 178], [
         30..100,
         40..90,
@@ -62,7 +80,7 @@ defmodule RandomColor do
       ])
     end
 
-    def blue() do
+    def blue do
       define("blue", [178, 257], [
         20..100,
         30..86,
@@ -76,7 +94,7 @@ defmodule RandomColor do
       ])
     end
 
-    def purple() do
+    def purple do
       define("purple", [257, 282], [
         20..100,
         30..87,
@@ -90,7 +108,7 @@ defmodule RandomColor do
       ])
     end
 
-    def pink() do
+    def pink do
       define("pink", [282, 334], [
         20..100,
         30..90,
@@ -111,16 +129,37 @@ defmodule RandomColor do
 
       %Color{
         name: name,
+        lower_bounds: lower_bounds,
         hue_range: hue_range,
         saturation_range: [s_min..s_max],
         brightness_range: [b_min..b_max]
       }
     end
+
+    def get_color_info(hue) do
+      hue =
+        if hue >= 334 and hue <= 360 do
+          hue - 360
+        else
+          hue
+        end
+
+      Enum.reduce_while(color_dictionary(), nil, fn color, _acc ->
+        if Enum.member?(color.hue_range, hue) do
+          {:halt, color}
+        else
+          {:cont, nil}
+        end
+      end)
+    end
   end
 
   def random_color(opts) do
     H = pick_hue(opts)
-    S = pick_saturation(H)
+    S = pick_saturation(H, opts)
+    B = pick_brightness(H, S, opts)
+
+    set_format({H, S, B}, opts)
   end
 
   def pick_hue(opts) do
@@ -132,12 +171,73 @@ defmodule RandomColor do
   end
 
   def pick_saturation(H, opts) do
-    #    saturation_range =
+    color_info = Color.get_color_info(H)
+
+    saturation_range = color_info.saturation_range
+
+    s_min..s_max = saturation_range
+
+    saturation_range =
+      cond do
+        opts[:luminosity] == "bright" -> 55..s_max
+        opts[:luminosity] == "dark" -> (s_max - 10)..s_max
+        opts[:luminosity] == "light" -> s_min..55
+        true -> saturation_range
+      end
+
+    Enum.random(saturation_range)
   end
 
   def pick_brightness(H, S, opts) do
+    b_min = get_min_brightness(H, S)
+    b_max = 100
+
+    brightness_range =
+      cond do
+        opts[:luminosity] == "random" -> 0..100
+        opts[:luminosity] == "dark" -> b_min..(b_min + 20)
+        opts[:luminosity] == "light" -> ((b_max + b_min) / 2)..b_max
+        true -> b_min..b_max
+      end
+
+    Enum.random(brightness_range)
   end
 
-  def set_format(H, S, B, opts) do
+  def set_format(hsv = {H, S, B}, opts) do
+    cond do
+      opts[:format] == "hsv" ->
+        hsv
+
+      true ->
+        hsv_to_hex(hsv)
+    end
+  end
+
+  defp get_min_brightness(H, S) do
+    color_info = Color.get_color_info(H)
+
+    lower_bounds = color_info.lower_bounds
+
+    lower_bounds
+    |> Enum.with_index()
+    |> Enum.reduce_while(0, fn {lb, index}, acc ->
+      next = Enum.at(lower_bounds, index + 1)
+
+      s1..v1 = lb
+      s2..v2 = next
+
+      if S >= s1 and S <= s2 do
+        m = v2 / v1 / (s2 - s1)
+        b = v1 - m * s1
+
+        {:halt, m * S + b}
+      else
+        {:cont, acc}
+      end
+    end)
+  end
+
+  defp hsv_to_hex(hsv) do
+
   end
 end
