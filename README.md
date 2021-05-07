@@ -1,6 +1,6 @@
 # RandomColor
 
-**TODO: Add description**
+Quick port of https://www.npmjs.com/package/randomcolor to Elixir.
 
 ## Installation
 

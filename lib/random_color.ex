@@ -6,6 +6,7 @@ defmodule RandomColor do
   alias RandomColor.Color
 
   defmodule Color do
+    @moduledoc false
     defstruct [:name, :lower_bounds, :hue_range, :saturation_range, :brightness_range]
 
     def color_dictionary() do
@@ -154,17 +155,52 @@ defmodule RandomColor do
     end
   end
 
-  def random_color(opts \\ [])
+  def rgb(opts \\ []) do
+    opts
+    |> random_color()
+    |> hsv_to_rgb()
+  end
 
-  def random_color(opts) do
+  def rgba(opts \\ [], alpha \\ nil) do
+    hsv = random_color(opts)
+
+    alpha =
+      if alpha do
+        alpha
+      else
+        Enum.random(0..10) / 10
+      end
+
+    opts
+    |> random_color()
+    |> hsv_to_rgb()
+    |> Tuple.append(alpha)
+  end
+
+  def hex(opts \\ []) do
+    opts
+    |> random_color()
+    |> hsv_to_hex()
+  end
+
+  def hsl(opts \\ []) do
+    opts
+    |> random_color()
+    |> hsv_to_hsl()
+  end
+
+  defp random_color(opts) do
+    # FIXME(ts): handle Hue opt
+    # FIXME(ts): handle seed opt
+
     h = pick_hue(opts)
     s = pick_saturation(h, opts)
     v = pick_brightness(h, s, opts)
 
-    set_format({h, s, v}, opts)
+    {h, s, v}
   end
 
-  def pick_hue(opts) do
+  defp pick_hue(opts) do
     hue_range = 0..360
 
     hue = Enum.random(hue_range)
@@ -172,7 +208,7 @@ defmodule RandomColor do
     hue
   end
 
-  def pick_saturation(h, opts) do
+  defp pick_saturation(h, opts) do
     color_info = Color.get_color_info(h)
 
     saturation_range = color_info.saturation_range
@@ -190,7 +226,7 @@ defmodule RandomColor do
     Enum.random(saturation_range)
   end
 
-  def pick_brightness(h, s, opts) do
+  defp pick_brightness(h, s, opts) do
     b_min = floor(get_min_brightness(h, s))
     b_max = 100
 
@@ -205,20 +241,7 @@ defmodule RandomColor do
     Enum.random(brightness_range)
   end
 
-  def set_format(hsv = {_h, _s, _v}, opts) do
-    cond do
-      opts[:format] == :hsv ->
-        hsv
-
-      opts[:format] == :rgb ->
-        hsv_to_rgb(hsv)
-
-      true ->
-        hsv_to_hex(hsv)
-    end
-  end
-
-  def hsv_to_hex(hsv) do
+  defp hsv_to_hex(hsv) do
     hsv
     |> hsv_to_rgb()
     |> Tuple.to_list()
@@ -227,7 +250,26 @@ defmodule RandomColor do
     end)
   end
 
-  def hsv_to_rgb({h, s, v}) do
+  defp hsv_to_hsl({h, s, v}) do
+    s = s / 100
+    v = v / 100
+    k = (2 - s) * v
+
+    {
+      h,
+      Math.round(
+        s * v /
+          if k < 1 do
+            k
+          else
+            2 - k
+          end * 10000
+      ) / 100,
+      k / 2 * 100
+    }
+  end
+
+  defp hsv_to_rgb({h, s, v}) do
     h =
       case h do
         0 -> 1
@@ -237,7 +279,7 @@ defmodule RandomColor do
 
     {h, s, v} = {h / 360, s / 100, v / 100}
 
-    h_i = floor(h * 6) |> IO.inspect()
+    h_i = floor(h * 6)
     f = h * 6 - h_i
     p = v * (1 - s)
     q = v * (1 - f * s)
@@ -253,7 +295,7 @@ defmodule RandomColor do
         5 -> {v, p, q}
       end
 
-    {floor(r * 255), floor(g * 255), floor(b * 255)} |> IO.inspect(label: :out)
+    {floor(r * 255), floor(g * 255), floor(b * 255)}
   end
 
   defp get_min_brightness(h, s) do
