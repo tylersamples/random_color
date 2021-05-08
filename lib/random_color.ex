@@ -4,203 +4,75 @@ defmodule RandomColor do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
-
   alias RandomColor.Color
 
-  defmodule Color do
-    @moduledoc false
-    defstruct [:name, :lower_bounds, :hue_range, :saturation_range, :brightness_range]
+  ## Dictionary
 
-    def color_dictionary() do
-      [
-        monochrome: monochrome(),
-        red: red(),
-        orange: orange(),
-        yellow: yellow(),
-        green: green(),
-        blue: blue(),
-        purple: purple(),
-        pink: pink()
-      ]
-    end
+  @color_dictionary [
+    monochrome: Color.monochrome(),
+    red: Color.red(),
+    orange: Color.orange(),
+    yellow: Color.yellow(),
+    green: Color.green(),
+    blue: Color.blue(),
+    purple: Color.purple(),
+    pink: Color.pink()
+  ]
 
-    def monochrome do
-      define(:monochrome, nil, [
-        0..0,
-        100..0
-      ])
-    end
-
-    def red do
-      define(:red, -26..18, [
-        20..100,
-        30..92,
-        40..89,
-        50..85,
-        60..78,
-        70..70,
-        80..60,
-        90..55,
-        100..50
-      ])
-    end
-
-    def orange do
-      define(:orange, 18..46, [
-        20..100,
-        30..93,
-        40..88,
-        50..86,
-        60..85,
-        70..70,
-        100..70
-      ])
-    end
-
-    def yellow do
-      define(:yellow, 46..62, [
-        25..100,
-        40..94,
-        50..89,
-        60..86,
-        70..84,
-        80..82,
-        90..80,
-        100..75
-      ])
-    end
-
-    def green do
-      define(:green, 62..178, [
-        30..100,
-        40..90,
-        50..85,
-        60..81,
-        70..74,
-        80..64,
-        90..50,
-        100..40
-      ])
-    end
-
-    def blue do
-      define(:blue, 178..257, [
-        20..100,
-        30..86,
-        40..80,
-        50..74,
-        60..60,
-        70..52,
-        80..44,
-        90..39,
-        100..35
-      ])
-    end
-
-    def purple do
-      define(:purple, 257..282, [
-        20..100,
-        30..87,
-        40..79,
-        50..70,
-        60..65,
-        70..59,
-        80..52,
-        90..45,
-        100..42
-      ])
-    end
-
-    def pink do
-      define(:pink, 282..334, [
-        20..100,
-        30..90,
-        40..86,
-        60..84,
-        80..80,
-        90..75,
-        100..73
-      ])
-    end
-
-    defp define(name, hue_range, lower_bounds) do
-      first = hd(lower_bounds)
-      last = Enum.at(lower_bounds, Enum.count(lower_bounds) - 1)
-
-      s_min..b_max = first
-      s_max..b_min = last
-
-      %Color{
-        name: name,
-        lower_bounds: lower_bounds,
-        hue_range: hue_range,
-        saturation_range: s_min..s_max,
-        brightness_range: b_min..b_max
-      }
-    end
-
-    def get_color_info(hue) do
-      hue =
-        if hue >= 334 and hue <= 360 do
-          hue - 360
-        else
-          hue
-        end
-
-      Enum.reduce_while(color_dictionary(), nil, fn {_name, color}, _acc ->
-        if not is_nil(color.hue_range) and Enum.member?(color.hue_range, hue) do
-          {:halt, color}
-        else
-          {:cont, nil}
-        end
-      end)
-    end
-
-    def get_color_hue_range(color_name) do
-      color =
-        Enum.reduce_while(color_dictionary(), nil, fn {name, color}, _acc ->
-          if name == color_name do
-            {:halt, color}
-          else
-            {:cont, nil}
-          end
-      end)
-
-      if not is_nil(color) and not is_nil(color.hue_range) do
-        color.hue_range
-      else
-        0..360
-      end
-    end
+  @doc false
+  def color_dictionary do
+    @color_dictionary
   end
+
+  ## Interface
 
   @doc """
   Generator a random color
 
   ## Options
-    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
-    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+    * `hue:` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `luminosity:` - `:dark`, `:bright`, `:light`, `:random`
+    * `format:` - `:string` (default), `:tuple`
+
+  ## Output Format
+    * `string` - `"rgb(221, 186, 95)"`
+    * `tuple` - `{221, 186, 95}`
 
   ## Examples
-    iex> RandomColor.rgb(hue: :red, luminosity: :light)
+      iex> RandomColor.rgb(hue: :red, luminosity: :light)
+
   """
   def rgb(opts \\ []) do
+    format = Keyword.get(opts, :format, :string)
+
     opts
     |> random_color()
     |> hsv_to_rgb()
+    |> format(:rgb, format)
   end
 
   @doc """
   Generator a random color
 
   ## Options
-    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
-    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+    * `hue:` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `luminosity:` - `:dark`, `:bright`, `:light`, `:random`
+    * `format:` - `:string` (default), `:tuple`
+
+
+    `alpha` a value between `0.0` and `1.0`
+
+  ## Output Format
+    * `string` - `"rgba(221, 186, 95, 0.1)"`
+    * `tuple` - `{221, 186, 95, 0.1}`
 
   ## Examples
-    iex> RandomColor.rgba([hue: :purple], 0.8)
+      iex> RandomColor.rgba([hue: :purple], 0.8)
+
   """
   def rgba(opts \\ [], alpha \\ nil) do
+    format = Keyword.get(opts, :format, :string)
+
     hsv = random_color(opts)
 
     alpha =
@@ -213,17 +85,23 @@ defmodule RandomColor do
     hsv
     |> hsv_to_rgb()
     |> Tuple.append(alpha)
+    |> format(:rgba, format)
   end
 
   @doc """
   Generator a random color
 
   ## Options
-    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
-    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+    * `hue:` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `luminosity:` - `:dark`, `:bright`, `:light`, `:random`
+
+  ## Output Format
+    * `string` - `"#13B592"`
 
   ## Examples
-    iex> RandomColor.hex(hue: :blue)
+      iex> RandomColor.hex(hue: :blue)
+
+
   """
   def hex(opts \\ []) do
     opts
@@ -235,17 +113,64 @@ defmodule RandomColor do
   Generator a random color
 
   ## Options
-    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
-    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+    * `hue:` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `luminosity:` - `:dark`, `:bright`, `:light`, `:random`
+    * `format:` - `:string` (default), `:tuple`
+
+  ## Output Format
+    * `string` - `"hsl(139, 82.32%, 71.725%)"`
+    * `tuple` - `{139, 82.32, 71.725}`
 
   ## Examples
-    iex> RandomColor.hsl(hue: :yellow, luminosity: :light)
+      iex> RandomColor.hsl(hue: :yellow, luminosity: :light)
   """
   def hsl(opts \\ []) do
+    format = Keyword.get(opts, :format, :string)
+
     opts
     |> random_color()
     |> hsv_to_hsl()
+    |> format(:hsl, format)
   end
+
+  @doc """
+  Generator a random color
+
+  ## Options
+    * `hue:` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `luminosity:` - `:dark`, `:bright`, `:light`, `:random`
+    * `format:` - `:string` (default), `:tuple`
+
+
+    `alpha` a value between `0.0` and `1.0`
+
+  ## Output Format
+    * `string` - `"hsl(139, 82.32%, 71.725%)"`
+    * `tuple` - `{139, 82.32, 71.725}`
+
+  ## Examples
+      iex> RandomColor.hsl(hue: :yellow, luminosity: :light)
+
+  """
+  def hsla(opts \\ [], alpha \\ nil) do
+    format = Keyword.get(opts, :format, :string)
+
+    hsv = random_color(opts)
+
+    alpha =
+      if alpha do
+        alpha
+      else
+        Enum.random(0..10) / 10
+      end
+
+    hsv
+    |> hsv_to_hsl()
+    |> Tuple.append(alpha)
+    |> format(:hsla, format)
+  end
+
+  ## Implementation
 
   defp random_color(opts) do
     # FIXME(ts): handle seed opt
@@ -263,8 +188,7 @@ defmodule RandomColor do
 
     hue = Enum.random(hue_range)
 
-
-    if hue < 0  do
+    if hue < 0 do
       360 + hue
     else
       hue
@@ -275,8 +199,10 @@ defmodule RandomColor do
     cond do
       opts[:hue] === :monochrome ->
         0
+
       opts[:luminosity] === :random ->
         Enum.random(0..100)
+
       true ->
         color_info = Color.get_color_info(h)
 
@@ -395,4 +321,18 @@ defmodule RandomColor do
       end
     end)
   end
+
+  ## Formatting
+
+  defp format({r, g, b}, :rgb, :string), do: "rgb(#{r}, #{g}, #{b})"
+  defp format(rgb, :rgb, :tuple), do: rgb
+
+  defp format({r, g, b, a}, :rgba, :string), do: "rgba(#{r}, #{g}, #{b}, #{a})"
+  defp format(rgba, :rgba, :tuple), do: rgba
+
+  defp format({h, s, l}, :hsl, :string), do: "hsl(#{h}, #{s}%, #{l}%)"
+  defp format(hsl, :hsl, :tuple), do: hsl
+
+  defp format({h, s, l, a}, :hsla, :string), do: "hsla(#{h}, #{s}%, #{l}%, #{a})"
+  defp format(hsla, :hsla, :tuple), do: hsla
 end
