@@ -1,10 +1,12 @@
 # RandomColor
 
-Quick port of https://www.npmjs.com/package/randomcolor to Elixir.
+<!-- MDOC !-->
+
+Elixir port of [davidmerfield/randomColor](https://github.com/davidmerfield/randomColor)
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
+The package can be installed
 by adding `random_color` to your list of dependencies in `mix.exs`:
 
 ```elixir
@@ -15,8 +17,23 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
+## Basic Usage
+
+```elixir
+RandomColor.hex() # #13B592
+
+RandomColor.rgb() # {189, 81, 542}
+RandomColor.rgb(format: :string) # rgb(189, 81, 542)
+
+RandomColor.hex(hue: :red) # #9B112C
+RandomColor.hex(hue: :red, luminosity: :light) # #FFB2CA
+
+RandomColor.hsla([], 0.5) # hsla(117, 65.29%, 48.4%, 0.5)
+```
+
+<!-- MDOC !-->
+
+The docs can
 be found at [https://hexdocs.pm/random_color](https://hexdocs.pm/random_color).
 
 ## License
