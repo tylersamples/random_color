@@ -1,7 +1,9 @@
 defmodule RandomColor do
-  @moduledoc """
-  Documentation for `RandomColor`.
-  """
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("<!-- MDOC !-->")
+             |> Enum.fetch!(1)
+
 
   alias RandomColor.Color
 
@@ -23,14 +25,14 @@ defmodule RandomColor do
     end
 
     def monochrome do
-      define("monochrome", nil, [
+      define(:monochrome, nil, [
         0..0,
         100..0
       ])
     end
 
     def red do
-      define("red", -26..18, [
+      define(:red, -26..18, [
         20..100,
         30..92,
         40..89,
@@ -44,7 +46,7 @@ defmodule RandomColor do
     end
 
     def orange do
-      define("orange", 18..46, [
+      define(:orange, 18..46, [
         20..100,
         30..93,
         40..88,
@@ -56,7 +58,7 @@ defmodule RandomColor do
     end
 
     def yellow do
-      define("yellow", 46..62, [
+      define(:yellow, 46..62, [
         25..100,
         40..94,
         50..89,
@@ -69,7 +71,7 @@ defmodule RandomColor do
     end
 
     def green do
-      define("green", 62..178, [
+      define(:green, 62..178, [
         30..100,
         40..90,
         50..85,
@@ -82,7 +84,7 @@ defmodule RandomColor do
     end
 
     def blue do
-      define("blue", 178..257, [
+      define(:blue, 178..257, [
         20..100,
         30..86,
         40..80,
@@ -96,7 +98,7 @@ defmodule RandomColor do
     end
 
     def purple do
-      define("purple", 257..282, [
+      define(:purple, 257..282, [
         20..100,
         30..87,
         40..79,
@@ -110,7 +112,7 @@ defmodule RandomColor do
     end
 
     def pink do
-      define("pink", 282..334, [
+      define(:pink, 282..334, [
         20..100,
         30..90,
         40..86,
@@ -145,7 +147,7 @@ defmodule RandomColor do
           hue
         end
 
-      Enum.reduce_while(color_dictionary(), nil, fn foo = {name, color}, _acc ->
+      Enum.reduce_while(color_dictionary(), nil, fn {_name, color}, _acc ->
         if not is_nil(color.hue_range) and Enum.member?(color.hue_range, hue) do
           {:halt, color}
         else
@@ -153,14 +155,51 @@ defmodule RandomColor do
         end
       end)
     end
+
+    def get_color_hue_range(color_name) do
+      color =
+        Enum.reduce_while(color_dictionary(), nil, fn {name, color}, _acc ->
+          if name == color_name do
+            {:halt, color}
+          else
+            {:cont, nil}
+          end
+      end)
+
+      if not is_nil(color) and not is_nil(color.hue_range) do
+        color.hue_range
+      else
+        0..360
+      end
+    end
   end
 
+  @doc """
+  Generator a random color
+
+  ## Options
+    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+
+  ## Examples
+    iex> RandomColor.rgb(hue: :red, luminosity: :light)
+  """
   def rgb(opts \\ []) do
     opts
     |> random_color()
     |> hsv_to_rgb()
   end
 
+  @doc """
+  Generator a random color
+
+  ## Options
+    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+
+  ## Examples
+    iex> RandomColor.rgba([hue: :purple], 0.8)
+  """
   def rgba(opts \\ [], alpha \\ nil) do
     hsv = random_color(opts)
 
@@ -171,18 +210,37 @@ defmodule RandomColor do
         Enum.random(0..10) / 10
       end
 
-    opts
-    |> random_color()
+    hsv
     |> hsv_to_rgb()
     |> Tuple.append(alpha)
   end
 
+  @doc """
+  Generator a random color
+
+  ## Options
+    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+
+  ## Examples
+    iex> RandomColor.hex(hue: :blue)
+  """
   def hex(opts \\ []) do
     opts
     |> random_color()
     |> hsv_to_hex()
   end
 
+  @doc """
+  Generator a random color
+
+  ## Options
+    * `:hue` - `:monochrome`, `:red`, `:orange`, `:yellow`, `:green`, `:blue`, `:purple`, `:pink`
+    * `:luminosity` - `:dark`, `:bright`, `:light`, `:random`
+
+  ## Examples
+    iex> RandomColor.hsl(hue: :yellow, luminosity: :light)
+  """
   def hsl(opts \\ []) do
     opts
     |> random_color()
@@ -190,7 +248,6 @@ defmodule RandomColor do
   end
 
   defp random_color(opts) do
-    # FIXME(ts): handle Hue opt
     # FIXME(ts): handle seed opt
 
     h = pick_hue(opts)
@@ -201,29 +258,42 @@ defmodule RandomColor do
   end
 
   defp pick_hue(opts) do
-    hue_range = 0..360
+    hue_opt = Keyword.get(opts, :hue)
+    hue_range = Color.get_color_hue_range(hue_opt)
 
     hue = Enum.random(hue_range)
 
-    hue
+
+    if hue < 0  do
+      360 + hue
+    else
+      hue
+    end
   end
 
   defp pick_saturation(h, opts) do
-    color_info = Color.get_color_info(h)
+    cond do
+      opts[:hue] === :monochrome ->
+        0
+      opts[:luminosity] === :random ->
+        Enum.random(0..100)
+      true ->
+        color_info = Color.get_color_info(h)
 
-    saturation_range = color_info.saturation_range
+        saturation_range = color_info.saturation_range
 
-    s_min..s_max = saturation_range
+        s_min..s_max = saturation_range
 
-    saturation_range =
-      cond do
-        opts[:luminosity] == :bright -> 55..s_max
-        opts[:luminosity] == :dark -> (s_max - 10)..s_max
-        opts[:luminosity] == :light -> s_min..55
-        true -> saturation_range
-      end
+        saturation_range =
+          cond do
+            opts[:luminosity] == :bright -> 55..s_max
+            opts[:luminosity] == :dark -> (s_max - 10)..s_max
+            opts[:luminosity] == :light -> s_min..55
+            true -> saturation_range
+          end
 
-    Enum.random(saturation_range)
+        Enum.random(saturation_range)
+    end
   end
 
   defp pick_brightness(h, s, opts) do
@@ -234,7 +304,7 @@ defmodule RandomColor do
       cond do
         opts[:luminosity] == :random -> 0..100
         opts[:luminosity] == :dark -> b_min..(b_min + 20)
-        opts[:luminosity] == :light -> ((b_max + b_min) / 2)..b_max
+        opts[:luminosity] == :light -> round((b_max + b_min) / 2)..b_max
         true -> b_min..b_max
       end
 
@@ -257,7 +327,7 @@ defmodule RandomColor do
 
     {
       h,
-      Math.round(
+      round(
         s * v /
           if k < 1 do
             k
@@ -308,16 +378,20 @@ defmodule RandomColor do
     |> Enum.reduce_while(0, fn {lb, index}, acc ->
       next = Enum.at(lower_bounds, index + 1)
 
-      s1..v1 = lb
-      s2..v2 = next
+      if next do
+        s1..v1 = lb
+        s2..v2 = next
 
-      if s >= s1 and s <= s2 do
-        m = v2 / v1 / (s2 - s1)
-        b = v1 - m * s1
+        if s >= s1 and s <= s2 do
+          m = v2 / v1 / (s2 - s1)
+          b = v1 - m * s1
 
-        {:halt, m * s + b}
+          {:halt, m * s + b}
+        else
+          {:cont, acc}
+        end
       else
-        {:cont, acc}
+        {:halt, 0}
       end
     end)
   end
